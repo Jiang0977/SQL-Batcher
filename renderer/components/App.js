@@ -265,6 +265,7 @@ const App = () => {
                     <SqlEditor
                         onExecuteSql={executeSql}
                         selectedDatabases={selectedDatabases}
+                        connections={connections}
                     />
                     
                     <ResultsDisplay
