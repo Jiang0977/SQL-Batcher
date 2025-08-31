@@ -200,17 +200,23 @@ const App = () => {
             // 等待所有执行完成
             const responses = await Promise.all(executionPromises);
             
-            // 合并结果
+            // 合并结果并添加连接信息
             let allResults = [];
             responses.forEach((response, index) => {
+                const connection = selectedConnections[index];
                 if (response.success) {
-                    allResults = [...allResults, ...response.results];
+                    // 为每个结果添加连接名称
+                    const resultsWithConnection = response.results.map(result => ({
+                        ...result,
+                        connectionName: connection.name
+                    }));
+                    allResults = [...allResults, ...resultsWithConnection];
                 } else {
-                    const connection = selectedConnections[index];
                     allResults.push({
                         database: 'N/A',
+                        connectionName: connection.name,
                         status: 'error',
-                        message: `Failed to execute on connection ${connection.name}: ${response.error}`,
+                        message: `Failed to execute: ${response.error}`,
                         executionTime: 0
                     });
                 }

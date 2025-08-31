@@ -20,6 +20,7 @@ const ResultsDisplay = ({ results }) => {
             <table className="results-table">
                 <thead>
                     <tr>
+                        <th>Connection</th>
                         <th>Database</th>
                         <th>Status</th>
                         <th>Message</th>
@@ -29,6 +30,7 @@ const ResultsDisplay = ({ results }) => {
                 <tbody>
                     {results.map((result, index) => (
                         <tr key={index} className={result.status}>
+                            <td>{result.connectionName || 'Unknown'}</td>
                             <td>{result.database}</td>
                             <td>{result.status.toUpperCase()}</td>
                             <td>{result.message}</td>
