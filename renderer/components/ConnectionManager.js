@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 
 const ConnectionManager = ({ 
     connections, 
-    selectedConnection,
+    selectedConnections,
     onSelectConnection,
     onSaveConnection, 
     onDeleteConnection, 
@@ -80,6 +80,11 @@ const ConnectionManager = ({
             username: '',
             password: ''
         });
+    };
+
+    // 检查连接是否被选中
+    const isConnectionSelected = (connectionId) => {
+        return selectedConnections.some(c => c.id === connectionId);
     };
 
     return (
@@ -182,7 +187,7 @@ const ConnectionManager = ({
                         {connections.map(connection => (
                             <li 
                                 key={connection.id} 
-                                className={`connection-item ${selectedConnection && selectedConnection.id === connection.id ? 'selected' : ''}`}
+                                className={`connection-item ${isConnectionSelected(connection.id) ? 'selected' : ''}`}
                                 onClick={() => handleSelectConnection(connection)}
                             >
                                 <div className="connection-info">
@@ -193,7 +198,7 @@ const ConnectionManager = ({
                                     <button onClick={(e) => {
                                         e.stopPropagation();
                                         handleSelectConnection(connection);
-                                    }}>Select</button>
+                                    }}>Toggle</button>
                                     <button onClick={(e) => {
                                         e.stopPropagation();
                                         onDeleteConnection(connection.id);

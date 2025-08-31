@@ -6,9 +6,9 @@ import ResultsDisplay from './ResultsDisplay';
 
 const App = () => {
     const [connections, setConnections] = useState([]);
-    const [selectedConnection, setSelectedConnection] = useState(null);
-    const [databases, setDatabases] = useState([]);
-    const [selectedDatabases, setSelectedDatabases] = useState([]);
+    const [selectedConnections, setSelectedConnections] = useState([]); // 支持多连接选择
+    const [databasesByConnection, setDatabasesByConnection] = useState({}); // 每个连接的数据库列表
+    const [selectedDatabases, setSelectedDatabases] = useState([]); // 选中的数据库（包含连接信息）
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState({ text: '', type: '' });
@@ -17,11 +17,6 @@ const App = () => {
     useEffect(() => {
         loadConnections();
     }, []);
-
-    // 当数据库列表变化时，重置选中的数据库
-    useEffect(() => {
-        setSelectedDatabases([]);
-    }, [databases.length]);
 
     const loadConnections = async () => {
         try {
@@ -106,10 +101,32 @@ const App = () => {
         }
     };
 
-    const selectConnection = async (connection) => {
-        setSelectedConnection(connection);
-        setSelectedDatabases([]); // Reset selected databases when changing connection
-        await refreshDatabases(connection);
+    const toggleConnectionSelection = async (connection) => {
+        let newSelectedConnections;
+        if (selectedConnections.some(c => c.id === connection.id)) {
+            // 取消选择连接
+            newSelectedConnections = selectedConnections.filter(c => c.id !== connection.id);
+        } else {
+            // 选择连接
+            newSelectedConnections = [...selectedConnections, connection];
+        }
+        
+        setSelectedConnections(newSelectedConnections);
+        
+        // 为新选择的连接加载数据库列表
+        if (!selectedConnections.some(c => c.id === connection.id)) {
+            try {
+                const response = await window.electron.ipcRenderer.invoke('get-databases', connection);
+                if (response.success) {
+                    setDatabasesByConnection(prev => ({
+                        ...prev,
+                        [connection.id]: response.databases
+                    }));
+                }
+            } catch (error) {
+                showMessage(`Failed to get databases for ${connection.name}: ${error.message}`, 'error');
+            }
+        }
     };
 
     const refreshDatabases = async (connection) => {
@@ -119,16 +136,19 @@ const App = () => {
             setLoading(false);
             
             if (response.success) {
-                setDatabases(response.databases);
-                showMessage('Databases loaded successfully', 'success');
+                setDatabasesByConnection(prev => ({
+                    ...prev,
+                    [connection.id]: response.databases
+                }));
+                showMessage(`Databases loaded for ${connection.name}`, 'success');
                 return true;
             } else {
-                showMessage(`Failed to get databases: ${response.error}`, 'error');
+                showMessage(`Failed to get databases for ${connection.name}: ${response.error}`, 'error');
                 return false;
             }
         } catch (error) {
             setLoading(false);
-            showMessage(`Failed to get databases: ${error.message}`, 'error');
+            showMessage(`Failed to get databases for ${connection.name}: ${error.message}`, 'error');
             return false;
         }
     };
@@ -138,8 +158,8 @@ const App = () => {
     };
 
     const executeSql = async (sql, selectedDatabases) => {
-        if (!selectedConnection) {
-            showMessage('Please select a connection first', 'error');
+        if (selectedConnections.length === 0) {
+            showMessage('Please select at least one connection', 'error');
             return;
         }
         
@@ -155,19 +175,50 @@ const App = () => {
         
         try {
             setLoading(true);
-            const response = await window.electron.ipcRenderer.invoke('execute-sql', {
-                sql,
-                selectedDatabases,
-                connection: selectedConnection
-            });
-            setLoading(false);
             
-            if (response.success) {
-                setResults(response.results);
-                showMessage(`Executed on ${response.results.length} databases`, 'success');
-            } else {
-                showMessage(`Execution failed: ${response.error}`, 'error');
-            }
+            // 按连接分组数据库
+            const databasesByConnectionId = {};
+            selectedDatabases.forEach(db => {
+                if (!databasesByConnectionId[db.connectionId]) {
+                    databasesByConnectionId[db.connectionId] = [];
+                }
+                databasesByConnectionId[db.connectionId].push(db.name);
+            });
+            
+            // 为每个连接执行SQL
+            const executionPromises = Object.keys(databasesByConnectionId).map(connectionId => {
+                const connection = selectedConnections.find(c => c.id === connectionId);
+                const databases = databasesByConnectionId[connectionId];
+                
+                return window.electron.ipcRenderer.invoke('execute-sql', {
+                    sql,
+                    selectedDatabases: databases,
+                    connection: connection
+                });
+            });
+            
+            // 等待所有执行完成
+            const responses = await Promise.all(executionPromises);
+            
+            // 合并结果
+            let allResults = [];
+            responses.forEach((response, index) => {
+                if (response.success) {
+                    allResults = [...allResults, ...response.results];
+                } else {
+                    const connection = selectedConnections[index];
+                    allResults.push({
+                        database: 'N/A',
+                        status: 'error',
+                        message: `Failed to execute on connection ${connection.name}: ${response.error}`,
+                        executionTime: 0
+                    });
+                }
+            });
+            
+            setLoading(false);
+            setResults(allResults);
+            showMessage(`Executed on ${allResults.length} database instances`, 'success');
         } catch (error) {
             setLoading(false);
             showMessage(`Execution failed: ${error.message}`, 'error');
@@ -183,14 +234,14 @@ const App = () => {
         <div className="app">
             <header className="app-header">
                 <h1>SQL Batcher</h1>
-                <p>Batch execute SQL statements across multiple databases</p>
+                <p>Batch execute SQL statements across multiple databases and connections</p>
             </header>
             
             <div className="app-content">
                 <ConnectionManager
                     connections={connections}
-                    selectedConnection={selectedConnection}
-                    onSelectConnection={selectConnection}
+                    selectedConnections={selectedConnections}
+                    onSelectConnection={toggleConnectionSelection}
                     onSaveConnection={saveConnection}
                     onDeleteConnection={deleteConnection}
                     onTestConnection={testConnection}
@@ -199,8 +250,8 @@ const App = () => {
                 
                 <div className="main-panel">
                     <DatabaseSelector
-                        databases={databases}
-                        selectedConnection={selectedConnection}
+                        databasesByConnection={databasesByConnection}
+                        selectedConnections={selectedConnections}
                         onRefreshDatabases={refreshDatabases}
                         onDatabaseSelectionChange={handleDatabaseSelectionChange}
                     />

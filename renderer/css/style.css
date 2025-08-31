@@ -250,44 +250,76 @@ body {
     flex: 1;
 }
 
-.database-actions {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 20px;
+.connection-database-group {
+    margin-bottom: 25px;
+    border: 1px solid #e1e1e1;
+    border-radius: 8px;
+    overflow: hidden;
 }
 
-.database-actions button {
-    padding: 10px 16px;
+.connection-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e1e1e1;
+}
+
+.connection-header h3 {
+    margin: 0;
+    color: #2c3e50;
+    font-size: 1.2em;
+}
+
+.connection-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.connection-actions button {
+    padding: 8px 14px;
     border: none;
     border-radius: 6px;
     cursor: pointer;
     font-weight: 600;
-    font-size: 14px;
-    background-color: #3498db;
-    color: white;
+    font-size: 13px;
     transition: all 0.3s ease;
 }
 
-.database-actions button:hover {
+.refresh-btn {
+    background-color: #3498db;
+    color: white;
+}
+
+.refresh-btn:hover {
     background-color: #2980b9;
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-.database-actions button:disabled {
+.select-all-btn {
+    background-color: #9b59b6;
+    color: white;
+}
+
+.select-all-btn:hover {
+    background-color: #8e44ad;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.select-all-btn:disabled {
     background-color: #bdc3c7;
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
 }
 
-.database-list-container {
-    max-height: 250px;
+.database-list {
+    max-height: 200px;
     overflow-y: auto;
-    border: 1px solid #e1e1e1;
-    border-radius: 8px;
     padding: 15px;
-    margin-bottom: 20px;
     background-color: #fafafa;
 }
 
@@ -323,13 +355,14 @@ body {
 }
 
 .selection-summary {
-    padding: 12px 15px;
+    padding: 15px;
     background-color: #e3f2fd;
-    border-radius: 6px;
+    border-radius: 8px;
     color: #1976d2;
     font-weight: 500;
     text-align: center;
     border: 1px solid #bbdefb;
+    margin-top: 15px;
 }
 
 /* SQL Editor */
