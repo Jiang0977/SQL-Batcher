@@ -1,151 +1,106 @@
 # SQL Batcher
 
-SQL Batcher is a cross-platform desktop application for batch executing SQL statements across multiple databases. It helps database administrators and developers save time by executing the same SQL statement on multiple databases simultaneously.
+SQL Batcher is a cross-platform desktop application built with Electron.js that allows users to execute SQL statements across multiple databases and connections simultaneously. It provides an efficient way to perform batch operations on various database systems.
+
+![SQL Batcher Application](home.png)
 
 ## Features
 
-- **Connection Management**: Add, edit, and delete multiple MySQL and PostgreSQL database connections
-- **Database Selection**: Automatically list all databases in a connection and select multiple for batch execution
-- **Multi-Connection Support**: Work with multiple database connections simultaneously
-- **SQL Execution**: Execute SQL statements on multiple databases across different connections
-- **Results Display**: View execution results for each database with success/failure status, execution time, and detailed data
-- **Local Storage**: Save connection configurations locally with AES-256 encryption for sensitive data
-- **SQL History**: Keep track of previously executed SQL statements for quick reuse
-- **Multi-Database Support**: Works with both MySQL and PostgreSQL databases
-- **Enhanced UI**: Modern, responsive interface with improved styling and custom scrollbars
-- **Detailed Execution Results**: View row data for SELECT statements and affected rows count for modification queries
+- **Multi-Connection Support**: Connect to multiple databases simultaneously (MySQL, PostgreSQL)
+- **Batch SQL Execution**: Execute SQL statements across all selected databases at once
+- **Connection Management**: Save and manage database connection configurations
+- **Results Display**: View execution results from all databases in a unified interface
+- **Cross-Platform**: Works on Windows, macOS, and Linux
 
 ## Installation
 
+To install and run SQL Batcher locally:
+
 1. Clone the repository:
-   ```
-   git clone https://github.com/your-username/SQL-Batcher.git
+   ```bash
+   git clone <repository-url>
    ```
 
 2. Navigate to the project directory:
-   ```
+   ```bash
    cd SQL-Batcher
    ```
 
 3. Install dependencies:
-   ```
+   ```bash
    npm install
    ```
 
-## Usage
-
-1. Start the application in development mode:
-   ```
+4. Start the application:
+   ```bash
    npm start
    ```
 
-2. Or build and run the production version:
-   ```
-   npm run build
-   ```
-
-3. Add a new database connection:
-   - Fill in the connection details (name, type, host, port, username, password)
-   - Click "Test Connection" to verify the connection
-   - Click "Save Connection" to save the connection
-
-4. Select databases for execution:
-   - Select one or more saved connections from the list
-   - Click "Refresh Databases" to load the database list for each connection
-   - Check the databases you want to execute SQL on
-
-5. Execute SQL:
-   - Enter your SQL statement in the editor
-   - Click "Execute SQL" to run the statement on all selected databases
-   - View detailed results in the results panel with success/failure status, execution time, and data
-
 ## Development
 
-This project is built with:
-- **Electron** - Cross-platform desktop application framework
-- **Node.js** - JavaScript runtime
-- **React** - Frontend UI library
-- **MySQL2** - MySQL client for Node.js
-- **pg** - PostgreSQL client for Node.js
-- **Webpack** - Module bundler
-- **Jest** - Testing framework
+To run the application in development mode:
 
-### Project Structure
-
-```
-SQL-Batcher/
-├── main.js              # Electron main process
-├── package.json         # Project configuration
-├── README.md            # This file
-├── webpack.config.js    # Webpack configuration
-├── renderer/            # Renderer process (UI)
-│   ├── index.html       # Main HTML file
-│   ├── css/             # Stylesheets
-│   ├── js/              # JavaScript files
-│   │   ├── bundle.js    # Bundled React app
-│   │   └── components/  # React components
-│   └── components/      # React components (source)
-├── src/                 # Backend modules
-│   └── database/        # Database related modules
-├── data/                # Local data storage
-│   └── connections.json # Connection configurations
-└── test/                # Test files
-```
-
-### Development Scripts
-
-- `npm start` - Start the application in development mode
-- `npm run dev` - Start the application in development mode
-- `npm run build` - Build the application for production
-- `npm test` - Run unit tests
-- `npm run test:watch` - Run unit tests in watch mode
-- `npm run build:react` - Build the React frontend
-- `npm run dev:react` - Build the React frontend in watch mode
+- `npm run dev` - Run the application in development mode with hot reloading
+- `npm run dev:react` - Run webpack in watch mode for React components
 
 ## Building for Production
 
-To build the application for distribution:
+To build the application for production:
+
+- `npm run build` - Build the application for production
+
+### Customizing App Icon
+
+To set a custom application icon:
+
+1. Create an `icons` directory in the project root
+2. Add your icon files:
+   - `icon.ico` for Windows
+   - `icon.icns` for macOS
+   - `icon.png` for Linux
+3. Run the build command
+
+### Production Build Configuration
+
+The production build automatically:
+- Disables developer tools
+- Optimizes React components
+- Packages the application for distribution
+
+## Testing
+
+- `npm test` - Run all tests
+- `npm run test:watch` - Run tests in watch mode
+
+## Project Structure
 
 ```
-npm run build
+SQL-Batcher/
+├── main.js                 # Electron main process
+├── package.json            # Project configuration and scripts
+├── webpack.config.js       # Webpack configuration for React components
+├── renderer/               # Renderer process (UI components)
+│   ├── index.html          # Main HTML file
+│   ├── css/                # Stylesheets
+│   └── js/                 # Client-side JavaScript
+│       └── preload.js      # Preload script for secure IPC
+├── src/                    # Main application source code
+│   └── database/           # Database connection and execution logic
+├── test/                   # Test files
+└── data/                   # Application data (including icons)
 ```
-
-This will create distributable packages in the `dist/` directory for Windows, macOS, and Linux.
 
 ## Security
 
-- Passwords are encrypted using AES-256-CBC before being stored locally
-- Communication between the renderer and main processes is handled securely through Electron's IPC mechanism
-
-## Recent Improvements
-
-### UI/UX Enhancements
-- Modern, responsive design with improved visual hierarchy
-- Custom styled scrollbars for better aesthetics
-- Enhanced SQL editor with larger text area
-- Improved connection and database selection interface
-
-### Functionality Improvements
-- Multi-connection support for simultaneous operations across different database servers
-- Detailed execution results with row data visualization for SELECT statements
-- Connection name display in database selection and results for better clarity
-- Enhanced error handling and user feedback
-
-### Performance Optimizations
-- Improved state management for better application responsiveness
-- Optimized database connection handling
-- Efficient result processing and display
+This application follows Electron security best practices:
+- Uses context isolation
+- Disables nodeIntegration
+- Uses a preload script for secure IPC communication
 
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License.
