@@ -12,6 +12,7 @@ build/
 data/connections.json
 
 # IDE and editor files
+.qoder/
 .vscode/
 .idea/
 *.swp
