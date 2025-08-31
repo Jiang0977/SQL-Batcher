@@ -483,6 +483,55 @@ body {
     background-color: #f5f5f5;
 }
 
+.message-cell {
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.expand-button {
+    background: none;
+    border: 1px solid #999;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.expand-button:hover {
+    background-color: #f0f0f0;
+}
+
+.row-data-container {
+    padding: 15px;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    margin: 10px 0;
+}
+
+.row-data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.row-data-table th,
+.row-data-table td {
+    padding: 8px;
+    text-align: left;
+    border: 1px solid #eee;
+}
+
+.row-data-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
 .results-summary {
     padding: 15px;
     background-color: #e9ecef;
@@ -593,5 +642,15 @@ body {
     
     .sql-editor textarea {
         height: 200px;
+    }
+    
+    .results-table th,
+    .results-table td {
+        padding: 10px 6px;
+        font-size: 14px;
+    }
+    
+    .message-cell {
+        max-width: 150px;
     }
 }

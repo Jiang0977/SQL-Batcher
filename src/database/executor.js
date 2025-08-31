@@ -177,11 +177,39 @@ async function executeSqlOnMySqlDatabase(sql, database, connectionConfig) {
         const [results] = await connection.execute(sql);
         const executionTime = Date.now() - startTime;
         
+        // 分析SQL类型以提供更详细的信息
+        const sqlType = getSqlType(sql);
+        let detailedMessage = `Query executed successfully.`;
+        let rowData = null;
+        let affectedRows = 0;
+        
+        if (sqlType === 'SELECT') {
+            // 对于SELECT语句，返回行数和示例行数据
+            affectedRows = Array.isArray(results) ? results.length : 0;
+            detailedMessage = `Query executed successfully. ${affectedRows} rows returned.`;
+            
+            // 如果结果不太多，返回前几行数据用于显示
+            if (affectedRows > 0 && affectedRows <= 100) {
+                rowData = Array.isArray(results) ? results.slice(0, 5) : [];
+            }
+        } else if (sqlType === 'INSERT' || sqlType === 'UPDATE' || sqlType === 'DELETE') {
+            // 对于修改操作，返回受影响的行数
+            affectedRows = results.affectedRows || 0;
+            detailedMessage = `Query executed successfully. ${affectedRows} rows affected.`;
+        } else {
+            // 其他类型的语句
+            affectedRows = results.affectedRows || 0;
+            detailedMessage = `Query executed successfully. ${affectedRows ? `${affectedRows} rows affected.` : ''}`;
+        }
+        
         return {
             database: database,
             status: 'success',
-            message: `Query executed successfully. ${results.affectedRows ? `${results.affectedRows} rows affected.` : ''}`,
-            executionTime: executionTime
+            message: detailedMessage,
+            executionTime: executionTime,
+            sqlType: sqlType,
+            affectedRows: affectedRows,
+            rowData: rowData
         };
     } catch (error) {
         const executionTime = Date.now() - startTime;
@@ -221,11 +249,39 @@ async function executeSqlOnPostgreSqlDatabase(sql, database, connectionConfig) {
         const result = await client.query(sql);
         const executionTime = Date.now() - startTime;
         
+        // 分析SQL类型以提供更详细的信息
+        const sqlType = getSqlType(sql);
+        let detailedMessage = `Query executed successfully.`;
+        let rowData = null;
+        let affectedRows = 0;
+        
+        if (sqlType === 'SELECT') {
+            // 对于SELECT语句，返回行数和示例行数据
+            affectedRows = result.rowCount || 0;
+            detailedMessage = `Query executed successfully. ${affectedRows} rows returned.`;
+            
+            // 如果结果不太多，返回前几行数据用于显示
+            if (affectedRows > 0 && affectedRows <= 100 && result.rows) {
+                rowData = result.rows.slice(0, 5);
+            }
+        } else if (sqlType === 'INSERT' || sqlType === 'UPDATE' || sqlType === 'DELETE') {
+            // 对于修改操作，返回受影响的行数
+            affectedRows = result.rowCount || 0;
+            detailedMessage = `Query executed successfully. ${affectedRows} rows affected.`;
+        } else {
+            // 其他类型的语句
+            affectedRows = result.rowCount || 0;
+            detailedMessage = `Query executed successfully. ${affectedRows ? `${affectedRows} rows affected.` : ''}`;
+        }
+        
         return {
             database: database,
             status: 'success',
-            message: `Query executed successfully. ${result.rowCount !== undefined ? `${result.rowCount} rows affected.` : ''}`,
-            executionTime: executionTime
+            message: detailedMessage,
+            executionTime: executionTime,
+            sqlType: sqlType,
+            affectedRows: affectedRows,
+            rowData: rowData
         };
     } catch (error) {
         const executionTime = Date.now() - startTime;
@@ -237,6 +293,32 @@ async function executeSqlOnPostgreSqlDatabase(sql, database, connectionConfig) {
         };
     } finally {
         await client.end();
+    }
+}
+
+/**
+ * Determine SQL statement type
+ * @param {string} sql - SQL statement
+ * @returns {string} - SQL type (SELECT, INSERT, UPDATE, DELETE, etc.)
+ */
+function getSqlType(sql) {
+    const trimmedSql = sql.trim().toUpperCase();
+    if (trimmedSql.startsWith('SELECT')) {
+        return 'SELECT';
+    } else if (trimmedSql.startsWith('INSERT')) {
+        return 'INSERT';
+    } else if (trimmedSql.startsWith('UPDATE')) {
+        return 'UPDATE';
+    } else if (trimmedSql.startsWith('DELETE')) {
+        return 'DELETE';
+    } else if (trimmedSql.startsWith('CREATE')) {
+        return 'CREATE';
+    } else if (trimmedSql.startsWith('DROP')) {
+        return 'DROP';
+    } else if (trimmedSql.startsWith('ALTER')) {
+        return 'ALTER';
+    } else {
+        return 'OTHER';
     }
 }
 
