@@ -6,11 +6,14 @@ SQL Batcher is a cross-platform desktop application for batch executing SQL stat
 
 - **Connection Management**: Add, edit, and delete multiple MySQL and PostgreSQL database connections
 - **Database Selection**: Automatically list all databases in a connection and select multiple for batch execution
-- **SQL Execution**: Execute SQL statements on multiple databases simultaneously
-- **Results Display**: View execution results for each database with success/failure status and execution time
+- **Multi-Connection Support**: Work with multiple database connections simultaneously
+- **SQL Execution**: Execute SQL statements on multiple databases across different connections
+- **Results Display**: View execution results for each database with success/failure status, execution time, and detailed data
 - **Local Storage**: Save connection configurations locally with AES-256 encryption for sensitive data
 - **SQL History**: Keep track of previously executed SQL statements for quick reuse
 - **Multi-Database Support**: Works with both MySQL and PostgreSQL databases
+- **Enhanced UI**: Modern, responsive interface with improved styling and custom scrollbars
+- **Detailed Execution Results**: View row data for SELECT statements and affected rows count for modification queries
 
 ## Installation
 
@@ -47,14 +50,14 @@ SQL Batcher is a cross-platform desktop application for batch executing SQL stat
    - Click "Save Connection" to save the connection
 
 4. Select databases for execution:
-   - Select a saved connection from the list
-   - Click "Refresh Databases" to load the database list
+   - Select one or more saved connections from the list
+   - Click "Refresh Databases" to load the database list for each connection
    - Check the databases you want to execute SQL on
 
 5. Execute SQL:
    - Enter your SQL statement in the editor
    - Click "Execute SQL" to run the statement on all selected databases
-   - View results in the results panel with success/failure status and execution time
+   - View detailed results in the results panel with success/failure status, execution time, and data
 
 ## Development
 
@@ -113,6 +116,25 @@ This will create distributable packages in the `dist/` directory for Windows, ma
 
 - Passwords are encrypted using AES-256-CBC before being stored locally
 - Communication between the renderer and main processes is handled securely through Electron's IPC mechanism
+
+## Recent Improvements
+
+### UI/UX Enhancements
+- Modern, responsive design with improved visual hierarchy
+- Custom styled scrollbars for better aesthetics
+- Enhanced SQL editor with larger text area
+- Improved connection and database selection interface
+
+### Functionality Improvements
+- Multi-connection support for simultaneous operations across different database servers
+- Detailed execution results with row data visualization for SELECT statements
+- Connection name display in database selection and results for better clarity
+- Enhanced error handling and user feedback
+
+### Performance Optimizations
+- Improved state management for better application responsiveness
+- Optimized database connection handling
+- Efficient result processing and display
 
 ## Contributing
 

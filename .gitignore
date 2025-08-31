@@ -1,23 +1,15 @@
 # Node.js dependencies
 node_modules/
 npm-debug.log*
-.npm
-.npmrc
-
-.qoder/*
+yarn-debug.log*
+yarn-error.log*
 
 # Build outputs
 dist/
 build/
-out/
 
-# Configuration files
-config/
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+# Data files (contains sensitive information)
+data/connections.json
 
 # IDE and editor files
 .vscode/
@@ -38,24 +30,19 @@ ehthumbs.db
 Thumbs.db
 
 # Logs
-logs/
 *.log
 
-# Runtime data
-pids/
-*.pid
-*.seed
-*.pid.lock
-
-# Coverage directory used by Jest
+# Test coverage
 coverage/
 
 # Temporary folders
 tmp/
 temp/
 
-# Data directory (contains sensitive information)
-data/connections.json
-
-# Webpack bundle
+# Webpack generated files
 renderer/js/bundle.js
+
+# Electron build artifacts
+*.exe
+*.dmg
+*.AppImage

@@ -1,7 +1,7 @@
 {
   "name": "sql-batcher",
   "version": "1.0.0",
-  "description": "A cross-platform desktop application for batch executing SQL statements",
+  "description": "A cross-platform desktop application for batch executing SQL statements across multiple databases and connections",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -10,7 +10,9 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "build:react": "webpack --mode production",
-    "dev:react": "webpack --mode development --watch"
+    "dev:react": "webpack --mode development --watch",
+    "clean": "rm -rf dist/ && rm -rf node_modules/ && npm install",
+    "docs": "echo 'Documentation generation placeholder'"
   },
   "keywords": [
     "sql",
@@ -18,7 +20,9 @@
     "database",
     "mysql",
     "postgresql",
-    "electron"
+    "electron",
+    "multi-connection",
+    "db-management"
   ],
   "author": "SQL Batcher Team",
   "license": "MIT",
