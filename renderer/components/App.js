@@ -103,19 +103,22 @@ const App = () => {
     };
 
     const toggleConnectionSelection = async (connection) => {
-        let newSelectedConnections;
-        if (selectedConnections.some(c => c.id === connection.id)) {
-            // 取消选择连接
-            newSelectedConnections = selectedConnections.filter(c => c.id !== connection.id);
-        } else {
-            // 选择连接
-            newSelectedConnections = [...selectedConnections, connection];
+        const isCurrentlySelected = selectedConnections.some(c => c.id === connection.id);
+
+        // 计算新的连接选择列表
+        const newSelectedConnections = isCurrentlySelected
+            ? selectedConnections.filter(c => c.id !== connection.id)
+            : [...selectedConnections, connection];
+
+        // 如果是取消选择，需要同步清除该连接下已选中的数据库
+        if (isCurrentlySelected) {
+            setSelectedDatabases(prev => prev.filter(db => db.connectionId !== connection.id));
         }
-        
+
         setSelectedConnections(newSelectedConnections);
-        
-        // 为新选择的连接加载数据库列表
-        if (!selectedConnections.some(c => c.id === connection.id)) {
+
+        // 如果是新选择连接，加载其数据库列表
+        if (!isCurrentlySelected) {
             try {
                 const response = await window.electron.ipcRenderer.invoke('get-databases', connection);
                 if (response.success) {
@@ -259,6 +262,7 @@ const App = () => {
                     <DatabaseSelector
                         databasesByConnection={databasesByConnection}
                         selectedConnections={selectedConnections}
+                        selectedDatabases={selectedDatabases}
                         onRefreshDatabases={refreshDatabases}
                         onDatabaseSelectionChange={handleDatabaseSelectionChange}
                     />

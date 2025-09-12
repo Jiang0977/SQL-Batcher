@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 
-const DatabaseSelector = ({ databasesByConnection, selectedConnections, onRefreshDatabases, onDatabaseSelectionChange }) => {
-    const [selectedDatabases, setSelectedDatabases] = useState([]);
+const DatabaseSelector = ({ databasesByConnection, selectedConnections, selectedDatabases, onRefreshDatabases, onDatabaseSelectionChange }) => {
 
     // 刷新指定连接的数据库
     const handleRefresh = (connection) => {
@@ -42,7 +41,6 @@ const DatabaseSelector = ({ databasesByConnection, selectedConnections, onRefres
             });
         }
         
-        setSelectedDatabases(newSelectedDatabases);
         onDatabaseSelectionChange(newSelectedDatabases);
     };
 
@@ -68,7 +66,6 @@ const DatabaseSelector = ({ databasesByConnection, selectedConnections, onRefres
             newSelectedDatabases = [...selectedDatabases, databaseIdentifier];
         }
         
-        setSelectedDatabases(newSelectedDatabases);
         onDatabaseSelectionChange(newSelectedDatabases);
     };
 
