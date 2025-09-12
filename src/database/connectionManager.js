@@ -2,10 +2,16 @@ const fs = require('fs').promises;
 const path = require('path');
 const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
+const { app } = require('electron');
 
-// Define the path for the connections file
-const DATA_DIR = path.join(__dirname, '..', '..', 'data');
-const CONNECTIONS_FILE = path.join(DATA_DIR, 'connections.json');
+// Resolve a writable data directory and file path in Electron userData
+function getDataDir() {
+    return app.getPath('userData');
+}
+
+function getConnectionsFilePath() {
+    return path.join(getDataDir(), 'connections.json');
+}
 
 // Encryption configuration
 const ENCRYPTION_KEY = crypto.createHash('sha256').update('sql-batcher-key-32-characters!!').digest();
@@ -49,14 +55,14 @@ function decrypt(text) {
 async function initializeDataDirectory() {
     try {
         // Create data directory if it doesn't exist
-        await fs.mkdir(DATA_DIR, { recursive: true });
+        await fs.mkdir(getDataDir(), { recursive: true });
         
         // Create connections file if it doesn't exist
         try {
-            await fs.access(CONNECTIONS_FILE);
+            await fs.access(getConnectionsFilePath());
         } catch (error) {
             // File doesn't exist, create it with empty connections array
-            await fs.writeFile(CONNECTIONS_FILE, JSON.stringify({ connections: [] }, null, 2));
+            await fs.writeFile(getConnectionsFilePath(), JSON.stringify({ connections: [] }, null, 2));
         }
     } catch (error) {
         console.error('Error initializing data directory:', error);
@@ -72,7 +78,7 @@ async function getConnections() {
     await initializeDataDirectory();
     
     try {
-        const data = await fs.readFile(CONNECTIONS_FILE, 'utf8');
+        const data = await fs.readFile(getConnectionsFilePath(), 'utf8');
         const connectionsData = JSON.parse(data);
         const connections = connectionsData.connections || [];
         
@@ -138,7 +144,7 @@ async function saveConnection(connection) {
             return connCopy;
         });
         
-        await fs.writeFile(CONNECTIONS_FILE, JSON.stringify({ connections: connectionsToSave }, null, 2));
+        await fs.writeFile(getConnectionsFilePath(), JSON.stringify({ connections: connectionsToSave }, null, 2));
         
         // Return connection with decrypted password for UI
         const returnConnection = { ...connection };
@@ -185,7 +191,7 @@ async function deleteConnection(id) {
             return connCopy;
         });
         
-        await fs.writeFile(CONNECTIONS_FILE, JSON.stringify({ connections: connectionsToSave }, null, 2));
+        await fs.writeFile(getConnectionsFilePath(), JSON.stringify({ connections: connectionsToSave }, null, 2));
         return true;
     } catch (error) {
         console.error('Error deleting connection:', error);
