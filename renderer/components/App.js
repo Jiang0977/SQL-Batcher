@@ -15,6 +15,7 @@ const App = () => {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState({ text: '', type: '' });
     const [isConnectionsModalOpen, setConnectionsModalOpen] = useState(false);
+    const [editingConnection, setEditingConnection] = useState(null);
     const confirm = useConfirm();
 
     // Load connections on startup
@@ -258,7 +259,7 @@ const App = () => {
                 <h1>SQL Batcher</h1>
                 <p>Batch execute SQL statements across multiple databases and connections</p>
                 <div className="header-actions">
-                    <button id="manage-connections-btn" onClick={() => setConnectionsModalOpen(true)}>Manage Connections</button>
+                    <button id="manage-connections-btn" onClick={() => { setEditingConnection(null); setConnectionsModalOpen(true); }}>Manage Connections</button>
                 </div>
             </header>
             
@@ -272,6 +273,7 @@ const App = () => {
                         onDeleteConnection={deleteConnection}
                         onTestConnection={testConnection}
                         onLoadConnections={loadConnections}
+                        onEditConnection={(connection) => { setEditingConnection(connection); setConnectionsModalOpen(true); }}
                         showForm={false}
                         showList={true}
                         title={null}
@@ -313,11 +315,11 @@ const App = () => {
 
             {isConnectionsModalOpen && (
                 ReactDOM.createPortal(
-                    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="connections-modal-title" onClick={() => setConnectionsModalOpen(false)}>
+                    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="connections-modal-title" onClick={() => { setConnectionsModalOpen(false); setEditingConnection(null); }}>
                         <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
                             <div className="modal-header">
                                 <h3 id="connections-modal-title">Database Connections</h3>
-                                <button className="modal-close-btn" aria-label="Close" onClick={() => setConnectionsModalOpen(false)}>×</button>
+                                <button className="modal-close-btn" aria-label="Close" onClick={() => { setConnectionsModalOpen(false); setEditingConnection(null); }}>×</button>
                             </div>
                             <div className="modal-content">
                                 <ConnectionManager
@@ -331,6 +333,7 @@ const App = () => {
                                     showForm={true}
                                     showList={false}
                                     title={null}
+                                    initialConnection={editingConnection}
                                 />
                             </div>
                         </div>

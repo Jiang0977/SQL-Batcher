@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const ConnectionManager = ({ 
     connections, 
@@ -8,9 +8,11 @@ const ConnectionManager = ({
     onDeleteConnection, 
     onTestConnection, 
     onLoadConnections,
+    onEditConnection,
     showForm = true,
     showList = true,
-    title = 'Database Connections'
+    title = 'Database Connections',
+    initialConnection = null
 }) => {
     const [formData, setFormData] = useState({
         id: '',
@@ -84,6 +86,25 @@ const ConnectionManager = ({
             password: ''
         });
     };
+
+    // 根据传入的初始连接（用于编辑）预填表单
+    useEffect(() => {
+        if (initialConnection && initialConnection.id) {
+            setFormData({
+                id: initialConnection.id,
+                name: initialConnection.name,
+                type: initialConnection.type,
+                host: initialConnection.host,
+                port: initialConnection.port?.toString?.() || String(initialConnection.port || ''),
+                username: initialConnection.username,
+                password: initialConnection.password || ''
+            });
+        } else if (showForm) {
+            // 仅当展示表单时才清空，列表-only 实例不受影响
+            clearForm();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [initialConnection]);
 
     // 检查连接是否被选中
     const isConnectionSelected = (connectionId) => {
@@ -205,7 +226,11 @@ const ConnectionManager = ({
                                         e.stopPropagation();
                                         handleSelectConnection(connection);
                                     }}>Toggle</button>
-                                    <button onClick={(e) => {
+                                    <button className="edit-connection-btn" onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (onEditConnection) onEditConnection(connection);
+                                    }}>Edit</button>
+                                    <button className="delete-connection-btn" onClick={(e) => {
                                         e.stopPropagation();
                                         onDeleteConnection(connection.id);
                                     }}>Delete</button>
