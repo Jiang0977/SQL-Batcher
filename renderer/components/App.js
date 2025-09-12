@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useConfirm } from './ConfirmProvider';
 import ConnectionManager from './ConnectionManager';
 import DatabaseSelector from './DatabaseSelector';
 import SqlEditor from './SqlEditor';
@@ -12,6 +13,7 @@ const App = () => {
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState({ text: '', type: '' });
+    const confirm = useConfirm();
 
     // Load connections on startup
     useEffect(() => {
@@ -57,9 +59,8 @@ const App = () => {
     };
 
     const deleteConnection = async (id) => {
-        if (!window.confirm('Are you sure you want to delete this connection?')) {
-            return;
-        }
+        const ok = await confirm({ title: 'Confirm', message: 'Are you sure you want to delete this connection?', okText: 'Delete', cancelText: 'Cancel' });
+        if (!ok) return;
         
         try {
             setLoading(true);

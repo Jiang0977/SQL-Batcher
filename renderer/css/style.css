@@ -607,6 +607,61 @@ body {
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
 }
 
+/* Confirm Styles */
+.confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.confirm-dialog {
+    width: 380px;
+    max-width: calc(100% - 40px);
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+    padding: 20px 20px 16px 20px;
+}
+
+.confirm-title {
+    margin: 0 0 10px 0;
+    color: #2c3e50;
+}
+
+.confirm-message {
+    color: #444;
+    line-height: 1.6;
+}
+
+.confirm-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.confirm-button {
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.confirm-button.cancel {
+    background-color: #ececec;
+    color: #333;
+}
+
+.confirm-button.ok {
+    background-color: #e74c3c;
+    color: #fff;
+}
+
 /* Empty Message */
 .empty-message {
     text-align: center;
