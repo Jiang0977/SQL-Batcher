@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { useConfirm } from './ConfirmProvider';
 import ConnectionManager from './ConnectionManager';
 import DatabaseSelector from './DatabaseSelector';
@@ -13,6 +14,7 @@ const App = () => {
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState({ text: '', type: '' });
+    const [isConnectionsModalOpen, setConnectionsModalOpen] = useState(false);
     const confirm = useConfirm();
 
     // Load connections on startup
@@ -240,24 +242,42 @@ const App = () => {
         setTimeout(() => setMessage({ text: '', type: '' }), 5000);
     };
 
+    // 处理 ESC 关闭弹窗
+    useEffect(() => {
+        if (!isConnectionsModalOpen) return;
+        const onKeyDown = (e) => {
+            if (e.key === 'Escape') setConnectionsModalOpen(false);
+        };
+        document.addEventListener('keydown', onKeyDown);
+        return () => document.removeEventListener('keydown', onKeyDown);
+    }, [isConnectionsModalOpen]);
+
     return (
         <div className="app">
             <header className="app-header">
                 <h1>SQL Batcher</h1>
                 <p>Batch execute SQL statements across multiple databases and connections</p>
+                <div className="header-actions">
+                    <button id="manage-connections-btn" onClick={() => setConnectionsModalOpen(true)}>Manage Connections</button>
+                </div>
             </header>
             
             <div className="app-content">
-                <ConnectionManager
-                    connections={connections}
-                    selectedConnections={selectedConnections}
-                    onSelectConnection={toggleConnectionSelection}
-                    onSaveConnection={saveConnection}
-                    onDeleteConnection={deleteConnection}
-                    onTestConnection={testConnection}
-                    onLoadConnections={loadConnections}
-                />
-                
+                <div className="panel connection-manager">
+                    <ConnectionManager
+                        connections={connections}
+                        selectedConnections={selectedConnections}
+                        onSelectConnection={toggleConnectionSelection}
+                        onSaveConnection={saveConnection}
+                        onDeleteConnection={deleteConnection}
+                        onTestConnection={testConnection}
+                        onLoadConnections={loadConnections}
+                        showForm={false}
+                        showList={true}
+                        title={null}
+                    />
+                </div>
+
                 <div className="main-panel">
                     <DatabaseSelector
                         databasesByConnection={databasesByConnection}
@@ -289,6 +309,34 @@ const App = () => {
                 <div className="loading-overlay">
                     <div className="loading-spinner">Loading...</div>
                 </div>
+            )}
+
+            {isConnectionsModalOpen && (
+                ReactDOM.createPortal(
+                    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="connections-modal-title" onClick={() => setConnectionsModalOpen(false)}>
+                        <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
+                            <div className="modal-header">
+                                <h3 id="connections-modal-title">Database Connections</h3>
+                                <button className="modal-close-btn" aria-label="Close" onClick={() => setConnectionsModalOpen(false)}>×</button>
+                            </div>
+                            <div className="modal-content">
+                                <ConnectionManager
+                                    connections={connections}
+                                    selectedConnections={selectedConnections}
+                                    onSelectConnection={toggleConnectionSelection}
+                                    onSaveConnection={saveConnection}
+                                    onDeleteConnection={deleteConnection}
+                                    onTestConnection={testConnection}
+                                    onLoadConnections={loadConnections}
+                                    showForm={true}
+                                    showList={false}
+                                    title={null}
+                                />
+                            </div>
+                        </div>
+                    </div>,
+                    document.body
+                )
             )}
         </div>
     );

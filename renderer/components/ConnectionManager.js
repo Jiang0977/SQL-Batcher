@@ -7,7 +7,10 @@ const ConnectionManager = ({
     onSaveConnection, 
     onDeleteConnection, 
     onTestConnection, 
-    onLoadConnections 
+    onLoadConnections,
+    showForm = true,
+    showList = true,
+    title = 'Database Connections'
 }) => {
     const [formData, setFormData] = useState({
         id: '',
@@ -89,8 +92,9 @@ const ConnectionManager = ({
 
     return (
         <div className="panel connection-manager">
-            <h2>Database Connections</h2>
+            {title && (<h2>{title}</h2>)}
             
+            {showForm && (
             <form className="connection-form" onSubmit={handleSubmit}>
                 <input type="hidden" name="id" value={formData.id} onChange={handleInputChange} />
                 
@@ -177,7 +181,9 @@ const ConnectionManager = ({
                     <button type="button" onClick={clearForm}>Clear</button>
                 </div>
             </form>
+            )}
             
+            {showList && (
             <div className="connections-list">
                 <h3>Saved Connections</h3>
                 {connections.length === 0 ? (
@@ -209,6 +215,7 @@ const ConnectionManager = ({
                     </ul>
                 )}
             </div>
+            )}
         </div>
     );
 };
