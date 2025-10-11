@@ -32,7 +32,7 @@ const SqlEditor = ({ onExecuteSql, selectedDatabases, connections }) => {
             <textarea
                 value={sql}
                 onChange={(e) => setSql(e.target.value)}
-                placeholder="Enter your SQL statement here..."
+                placeholder="Enter one or multiple SQL statements separated by ';'."
             />
             
             <div className="execution-actions">

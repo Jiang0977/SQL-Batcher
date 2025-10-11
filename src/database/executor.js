@@ -2,6 +2,150 @@ const mysql = require('mysql2/promise');
 const { Client } = require('pg');
 const { v4: uuidv4 } = require('uuid');
 
+// -------------------------
+// Helper: split SQL into statements safely (supports quotes, comments, PG $tag$)
+// -------------------------
+function splitSqlStatements(sql, dialect = 'mysql') {
+    const statements = [];
+    if (!sql || typeof sql !== 'string') return statements;
+
+    let i = 0;
+    const n = sql.length;
+    let current = '';
+    let inSingle = false;
+    let inDouble = false;
+    let inBacktick = false; // mysql identifiers
+    let inLineComment = false;
+    let inBlockComment = false;
+    let pgDollarTag = null; // e.g., $tag$
+
+    function isDollarStart(idx) {
+        if (dialect !== 'postgresql') return null;
+        if (sql[idx] !== '$') return null;
+        let j = idx + 1;
+        while (j < n && /[A-Za-z0-9_]/.test(sql[j])) j++;
+        if (j < n && sql[j] === '$') {
+            return sql.slice(idx, j + 1); // e.g., $tag$
+        }
+        return '$$'; // handle $$ as empty tag
+    }
+
+    while (i < n) {
+        const ch = sql[i];
+        const next = i + 1 < n ? sql[i + 1] : '';
+
+        // Handle exiting comments
+        if (inLineComment) {
+            current += ch;
+            if (ch === '\n') inLineComment = false;
+            i++;
+            continue;
+        }
+        if (inBlockComment) {
+            current += ch;
+            if (ch === '*' && next === '/') {
+                current += next;
+                i += 2;
+                inBlockComment = false;
+                continue;
+            }
+            i++;
+            continue;
+        }
+
+        // Handle entering comments (when not in quotes/dollar quote)
+        if (!inSingle && !inDouble && !inBacktick && !pgDollarTag) {
+            if (ch === '-' && next === '-') {
+                inLineComment = true;
+                current += ch + next;
+                i += 2;
+                continue;
+            }
+            if (ch === '/' && next === '*') {
+                inBlockComment = true;
+                current += ch + next;
+                i += 2;
+                continue;
+            }
+        }
+
+        // Handle quotes
+        if (!pgDollarTag && !inLineComment && !inBlockComment) {
+            if (!inDouble && !inBacktick && ch === "'" && !inSingle) {
+                inSingle = true;
+                current += ch;
+                i++;
+                continue;
+            } else if (inSingle) {
+                current += ch;
+                if (ch === "'" && sql[i - 1] !== '\\') {
+                    inSingle = false;
+                }
+                i++;
+                continue;
+            }
+
+            if (!inSingle && !inBacktick && ch === '"' && !inDouble) {
+                inDouble = true;
+                current += ch;
+                i++;
+                continue;
+            } else if (inDouble) {
+                current += ch;
+                if (ch === '"' && sql[i - 1] !== '\\') {
+                    inDouble = false;
+                }
+                i++;
+                continue;
+            }
+
+            if (dialect === 'mysql' && !inSingle && !inDouble && ch === '`' && !inBacktick) {
+                inBacktick = true;
+                current += ch;
+                i++;
+                continue;
+            } else if (inBacktick) {
+                current += ch;
+                if (ch === '`') inBacktick = false;
+                i++;
+                continue;
+            }
+        }
+
+        // Handle PostgreSQL dollar-quoted strings
+        if (!inSingle && !inDouble && !inBacktick && !inLineComment && !inBlockComment) {
+            if (!pgDollarTag && ch === '$') {
+                const tag = isDollarStart(i);
+                if (tag) {
+                    pgDollarTag = tag;
+                }
+            } else if (pgDollarTag && ch === '$') {
+                const maybe = sql.slice(i, i + pgDollarTag.length);
+                if (maybe === pgDollarTag) {
+                    current += maybe;
+                    i += pgDollarTag.length;
+                    pgDollarTag = null;
+                    continue;
+                }
+            }
+        }
+
+        // Statement boundary at semicolon only when not inside any string/comment/dollar block
+        if (!inSingle && !inDouble && !inBacktick && !inLineComment && !inBlockComment && !pgDollarTag && ch === ';') {
+            if (current.trim()) statements.push(current.trim());
+            current = '';
+            i++;
+            continue;
+        }
+
+        current += ch;
+        i++;
+    }
+
+    if (current.trim()) statements.push(current.trim());
+    return statements;
+}
+
 /**
  * Test database connection
  * @param {Object} connectionConfig - Database connection configuration
@@ -163,8 +307,9 @@ async function executeSqlOnDatabase(sql, database, connectionConfig) {
  */
 async function executeSqlOnMySqlDatabase(sql, database, connectionConfig) {
     let connection;
-    const startTime = Date.now();
-    
+    const overallStart = Date.now();
+    const statements = splitSqlStatements(sql, 'mysql');
+
     try {
         connection = await mysql.createConnection({
             host: connectionConfig.host,
@@ -173,51 +318,143 @@ async function executeSqlOnMySqlDatabase(sql, database, connectionConfig) {
             password: connectionConfig.password,
             database: database
         });
-        
-        const [results] = await connection.execute(sql);
-        const executionTime = Date.now() - startTime;
-        
-        // 分析SQL类型以提供更详细的信息
-        const sqlType = getSqlType(sql);
-        let detailedMessage = `Query executed successfully.`;
-        let rowData = null;
-        let affectedRows = 0;
-        
-        if (sqlType === 'SELECT') {
-            // 对于SELECT语句，返回行数和示例行数据
-            affectedRows = Array.isArray(results) ? results.length : 0;
-            detailedMessage = `Query executed successfully. ${affectedRows} rows returned.`;
-            
-            // 如果结果不太多，返回前几行数据用于显示
-            if (affectedRows > 0 && affectedRows <= 100) {
-                rowData = Array.isArray(results) ? results.slice(0, 5) : [];
-            }
-        } else if (sqlType === 'INSERT' || sqlType === 'UPDATE' || sqlType === 'DELETE') {
-            // 对于修改操作，返回受影响的行数
-            affectedRows = results.affectedRows || 0;
-            detailedMessage = `Query executed successfully. ${affectedRows} rows affected.`;
+
+        // Begin transaction
+        if (typeof connection.beginTransaction === 'function') {
+            await connection.beginTransaction();
         } else {
-            // 其他类型的语句
-            affectedRows = results.affectedRows || 0;
-            detailedMessage = `Query executed successfully. ${affectedRows ? `${affectedRows} rows affected.` : ''}`;
+            await connection.execute('START TRANSACTION');
         }
-        
+
+        const statementResults = [];
+        let totalAffected = 0;
+
+        for (let idx = 0; idx < statements.length; idx++) {
+            const stmt = statements[idx];
+            const stmtStart = Date.now();
+            const stmtType = getSqlType(stmt);
+            try {
+                const [rowsOrOk] = await connection.execute(stmt);
+                const stmtTime = Date.now() - stmtStart;
+
+                let affectedRows = 0;
+                let preview = null;
+                let message = 'OK';
+                if (stmtType === 'SELECT') {
+                    const rows = Array.isArray(rowsOrOk) ? rowsOrOk : [];
+                    affectedRows = rows.length;
+                    if (affectedRows > 0 && affectedRows <= 100) {
+                        preview = rows.slice(0, 5);
+                    }
+                    message = `${affectedRows} rows returned`;
+                } else {
+                    affectedRows = rowsOrOk && typeof rowsOrOk.affectedRows === 'number' ? rowsOrOk.affectedRows : 0;
+                    message = `${affectedRows} rows affected`;
+                }
+                totalAffected += affectedRows;
+                statementResults.push({
+                    index: idx + 1,
+                    sql: stmt,
+                    sqlType: stmtType,
+                    status: 'success',
+                    message,
+                    affectedRows,
+                    rowData: preview,
+                    executionTime: stmtTime
+                });
+            } catch (stmtErr) {
+                // Rollback and mark remaining as skipped
+                try {
+                    if (typeof connection.rollback === 'function') {
+                        await connection.rollback();
+                    } else {
+                        await connection.execute('ROLLBACK');
+                    }
+                } catch (_) {}
+
+                const stmtTime = Date.now() - stmtStart;
+                statementResults.push({
+                    index: idx + 1,
+                    sql: stmt,
+                    sqlType: stmtType,
+                    status: 'error',
+                    message: stmtErr.message,
+                    affectedRows: 0,
+                    rowData: null,
+                    executionTime: stmtTime
+                });
+                // mark remaining as skipped
+                for (let j = idx + 1; j < statements.length; j++) {
+                    statementResults.push({
+                        index: j + 1,
+                        sql: statements[j],
+                        sqlType: getSqlType(statements[j]),
+                        status: 'skipped',
+                        message: 'Skipped due to previous error and rollback',
+                        affectedRows: 0,
+                        rowData: null,
+                        executionTime: 0
+                    });
+                }
+
+                const overallTime = Date.now() - overallStart;
+                return {
+                    database,
+                    status: 'error',
+                    message: `Rolled back due to error at statement #${idx + 1}: ${stmtErr.message}`,
+                    executionTime: overallTime,
+                    sqlType: statements.length > 1 ? 'MULTI' : getSqlType(sql),
+                    affectedRows: totalAffected,
+                    statements: statementResults
+                };
+            }
+        }
+
+        // Commit if all succeeded
+        try {
+            if (typeof connection.commit === 'function') {
+                await connection.commit();
+            } else {
+                await connection.execute('COMMIT');
+            }
+        } catch (commitErr) {
+            // If commit fails, attempt rollback
+            try {
+                if (typeof connection.rollback === 'function') {
+                    await connection.rollback();
+                } else {
+                    await connection.execute('ROLLBACK');
+                }
+            } catch (_) {}
+            const overallTime = Date.now() - overallStart;
+            return {
+                database,
+                status: 'error',
+                message: `Commit failed: ${commitErr.message}`,
+                executionTime: overallTime,
+                sqlType: statements.length > 1 ? 'MULTI' : getSqlType(sql),
+                affectedRows: totalAffected,
+                statements: statementResults
+            };
+        }
+
+        const overallTime = Date.now() - overallStart;
         return {
-            database: database,
+            database,
             status: 'success',
-            message: detailedMessage,
-            executionTime: executionTime,
-            sqlType: sqlType,
-            affectedRows: affectedRows,
-            rowData: rowData
+            message: `${statementResults.filter(s => s.status === 'success').length}/${statements.length} statements succeeded`,
+            executionTime: overallTime,
+            sqlType: statements.length > 1 ? 'MULTI' : getSqlType(sql),
+            affectedRows: totalAffected,
+            statements: statementResults
         };
     } catch (error) {
-        const executionTime = Date.now() - startTime;
+        const overallTime = Date.now() - overallStart;
         return {
             database: database,
             status: 'error',
             message: error.message,
-            executionTime: executionTime
+            executionTime: overallTime
         };
     } finally {
         if (connection) {
@@ -242,54 +479,116 @@ async function executeSqlOnPostgreSqlDatabase(sql, database, connectionConfig) {
         database: database
     });
     
-    const startTime = Date.now();
+    const overallStart = Date.now();
+    const statements = splitSqlStatements(sql, 'postgresql');
     
     try {
         await client.connect();
-        const result = await client.query(sql);
-        const executionTime = Date.now() - startTime;
-        
-        // 分析SQL类型以提供更详细的信息
-        const sqlType = getSqlType(sql);
-        let detailedMessage = `Query executed successfully.`;
-        let rowData = null;
-        let affectedRows = 0;
-        
-        if (sqlType === 'SELECT') {
-            // 对于SELECT语句，返回行数和示例行数据
-            affectedRows = result.rowCount || 0;
-            detailedMessage = `Query executed successfully. ${affectedRows} rows returned.`;
-            
-            // 如果结果不太多，返回前几行数据用于显示
-            if (affectedRows > 0 && affectedRows <= 100 && result.rows) {
-                rowData = result.rows.slice(0, 5);
+        await client.query('BEGIN');
+
+        const statementResults = [];
+        let totalAffected = 0;
+
+        for (let idx = 0; idx < statements.length; idx++) {
+            const stmt = statements[idx];
+            const stmtStart = Date.now();
+            const stmtType = getSqlType(stmt);
+            try {
+                const result = await client.query(stmt);
+                const stmtTime = Date.now() - stmtStart;
+                let affectedRows = 0;
+                let preview = null;
+                let message = 'OK';
+                if (stmtType === 'SELECT') {
+                    affectedRows = result.rowCount || 0;
+                    if (affectedRows > 0 && affectedRows <= 100 && result.rows) {
+                        preview = result.rows.slice(0, 5);
+                    }
+                    message = `${affectedRows} rows returned`;
+                } else {
+                    affectedRows = result.rowCount || 0;
+                    message = `${affectedRows} rows affected`;
+                }
+                totalAffected += affectedRows;
+                statementResults.push({
+                    index: idx + 1,
+                    sql: stmt,
+                    sqlType: stmtType,
+                    status: 'success',
+                    message,
+                    affectedRows,
+                    rowData: preview,
+                    executionTime: stmtTime
+                });
+            } catch (stmtErr) {
+                try { await client.query('ROLLBACK'); } catch (_) {}
+                const stmtTime = Date.now() - stmtStart;
+                statementResults.push({
+                    index: idx + 1,
+                    sql: stmt,
+                    sqlType: stmtType,
+                    status: 'error',
+                    message: stmtErr.message,
+                    affectedRows: 0,
+                    rowData: null,
+                    executionTime: stmtTime
+                });
+                for (let j = idx + 1; j < statements.length; j++) {
+                    statementResults.push({
+                        index: j + 1,
+                        sql: statements[j],
+                        sqlType: getSqlType(statements[j]),
+                        status: 'skipped',
+                        message: 'Skipped due to previous error and rollback',
+                        affectedRows: 0,
+                        rowData: null,
+                        executionTime: 0
+                    });
+                }
+                const overallTime = Date.now() - overallStart;
+                return {
+                    database,
+                    status: 'error',
+                    message: `Rolled back due to error at statement #${idx + 1}: ${stmtErr.message}`,
+                    executionTime: overallTime,
+                    sqlType: statements.length > 1 ? 'MULTI' : getSqlType(sql),
+                    affectedRows: totalAffected,
+                    statements: statementResults
+                };
             }
-        } else if (sqlType === 'INSERT' || sqlType === 'UPDATE' || sqlType === 'DELETE') {
-            // 对于修改操作，返回受影响的行数
-            affectedRows = result.rowCount || 0;
-            detailedMessage = `Query executed successfully. ${affectedRows} rows affected.`;
-        } else {
-            // 其他类型的语句
-            affectedRows = result.rowCount || 0;
-            detailedMessage = `Query executed successfully. ${affectedRows ? `${affectedRows} rows affected.` : ''}`;
         }
-        
+
+        try { await client.query('COMMIT'); } catch (commitErr) {
+            try { await client.query('ROLLBACK'); } catch (_) {}
+            const overallTime = Date.now() - overallStart;
+            return {
+                database,
+                status: 'error',
+                message: `Commit failed: ${commitErr.message}`,
+                executionTime: overallTime,
+                sqlType: statements.length > 1 ? 'MULTI' : getSqlType(sql),
+                affectedRows: totalAffected,
+                statements: statementResults
+            };
+        }
+
+        const overallTime = Date.now() - overallStart;
         return {
-            database: database,
+            database,
             status: 'success',
-            message: detailedMessage,
-            executionTime: executionTime,
-            sqlType: sqlType,
-            affectedRows: affectedRows,
-            rowData: rowData
+            message: `${statementResults.filter(s => s.status === 'success').length}/${statements.length} statements succeeded`,
+            executionTime: overallTime,
+            sqlType: statements.length > 1 ? 'MULTI' : getSqlType(sql),
+            affectedRows: totalAffected,
+            statements: statementResults
         };
     } catch (error) {
-        const executionTime = Date.now() - startTime;
+        const overallTime = Date.now() - overallStart;
         return {
             database: database,
             status: 'error',
             message: error.message,
-            executionTime: executionTime
+            executionTime: overallTime
         };
     } finally {
         await client.end();

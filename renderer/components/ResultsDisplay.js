@@ -1,16 +1,20 @@
 import React, { useState } from 'react';
 
 const ResultsDisplay = ({ results }) => {
-    const [expandedRows, setExpandedRows] = useState(new Set());
+    const [expandedDbRows, setExpandedDbRows] = useState(new Set());
+    const [expandedStmtRows, setExpandedStmtRows] = useState(new Set());
 
-    const toggleRowExpansion = (index) => {
-        const newExpandedRows = new Set(expandedRows);
-        if (newExpandedRows.has(index)) {
-            newExpandedRows.delete(index);
-        } else {
-            newExpandedRows.add(index);
-        }
-        setExpandedRows(newExpandedRows);
+    const toggleDbExpansion = (index) => {
+        const next = new Set(expandedDbRows);
+        if (next.has(index)) next.delete(index); else next.add(index);
+        setExpandedDbRows(next);
+    };
+
+    const toggleStmtExpansion = (dbIndex, stmtIndex) => {
+        const key = `${dbIndex}-${stmtIndex}`;
+        const next = new Set(expandedStmtRows);
+        if (next.has(key)) next.delete(key); else next.add(key);
+        setExpandedStmtRows(next);
     };
 
     if (results.length === 0) {
@@ -56,6 +60,58 @@ const ResultsDisplay = ({ results }) => {
         );
     };
 
+    const renderStatementsTable = (statements, dbIndex) => {
+        if (!Array.isArray(statements) || statements.length === 0) return null;
+        return (
+            <div className="statements-container">
+                <table className="row-data-table">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>#</th>
+                            <th>SQL Type</th>
+                            <th>Status</th>
+                            <th>Message</th>
+                            <th>Rows Affected</th>
+                            <th>Execution Time (ms)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {statements.map((s, sIdx) => (
+                            <React.Fragment key={sIdx}>
+                                <tr className={s.status}>
+                                    <td>
+                                        {s.rowData && s.rowData.length > 0 && (
+                                            <button 
+                                                className="expand-button"
+                                                onClick={() => toggleStmtExpansion(dbIndex, sIdx)}
+                                            >
+                                                {expandedStmtRows.has(`${dbIndex}-${sIdx}`) ? '−' : '+'}
+                                            </button>
+                                        )}
+                                    </td>
+                                    <td>{s.index}</td>
+                                    <td>{s.sqlType || 'N/A'}</td>
+                                    <td>{s.status?.toUpperCase?.() || 'N/A'}</td>
+                                    <td className="message-cell">{s.message}</td>
+                                    <td>{s.affectedRows !== undefined ? s.affectedRows : 'N/A'}</td>
+                                    <td>{s.executionTime || 'N/A'}</td>
+                                </tr>
+                                {expandedStmtRows.has(`${dbIndex}-${sIdx}`) && s.rowData && (
+                                    <tr>
+                                        <td colSpan="7">
+                                            {renderRowData(s.rowData)}
+                                        </td>
+                                    </tr>
+                                )}
+                            </React.Fragment>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        );
+    };
+
     return (
         <div className="panel results-display">
             <h2>Execution Results</h2>
@@ -78,12 +134,12 @@ const ResultsDisplay = ({ results }) => {
                         <React.Fragment key={index}>
                             <tr className={result.status}>
                                 <td>
-                                    {result.rowData && result.rowData.length > 0 && (
+                                    {Array.isArray(result.statements) && result.statements.length > 0 && (
                                         <button 
                                             className="expand-button"
-                                            onClick={() => toggleRowExpansion(index)}
+                                            onClick={() => toggleDbExpansion(index)}
                                         >
-                                            {expandedRows.has(index) ? '−' : '+'}
+                                            {expandedDbRows.has(index) ? '−' : '+'}
                                         </button>
                                     )}
                                 </td>
@@ -95,10 +151,10 @@ const ResultsDisplay = ({ results }) => {
                                 <td>{result.affectedRows !== undefined ? result.affectedRows : 'N/A'}</td>
                                 <td>{result.executionTime || 'N/A'}</td>
                             </tr>
-                            {expandedRows.has(index) && result.rowData && (
+                            {expandedDbRows.has(index) && Array.isArray(result.statements) && result.statements.length > 0 && (
                                 <tr>
                                     <td colSpan="8">
-                                        {renderRowData(result.rowData)}
+                                        {renderStatementsTable(result.statements, index)}
                                     </td>
                                 </tr>
                             )}
