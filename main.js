@@ -1,5 +1,6 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const { executeSqlOnDatabases, getDatabaseList, testConnection } = require('./src/database/executor');
 const { saveConnection, getConnections, deleteConnection, updateConnection } = require('./src/database/connectionManager');
 
@@ -111,6 +112,25 @@ ipcMain.handle('update-connection', async (event, connection) => {
   try {
     const result = await updateConnection(connection);
     return { success: true, result };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('export-markdown', async (event, { content }) => {
+  try {
+    const { canceled, filePath } = await dialog.showSaveDialog({
+      title: 'Export Execution Results',
+      filters: [{ name: 'Markdown', extensions: ['md'] }],
+      properties: ['createDirectory', 'showOverwriteConfirmation']
+    });
+
+    if (canceled || !filePath) {
+      return { success: false, canceled: true };
+    }
+
+    await fs.promises.writeFile(filePath, content || '', 'utf8');
+    return { success: true, filePath };
   } catch (error) {
     return { success: false, error: error.message };
   }

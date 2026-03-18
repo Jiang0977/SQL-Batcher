@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { buildExecutionResultsMarkdown } from '../../src/export/markdownExport';
 
-const ResultsDisplay = ({ results }) => {
+const ResultsDisplay = ({ results, lastSql, onExportMarkdown }) => {
     const [expandedDbRows, setExpandedDbRows] = useState(new Set());
     const [expandedStmtRows, setExpandedStmtRows] = useState(new Set());
 
@@ -28,6 +29,12 @@ const ResultsDisplay = ({ results }) => {
 
     const successCount = results.filter(r => r.status === 'success').length;
     const failureCount = results.filter(r => r.status === 'error').length;
+
+    const handleExport = async () => {
+        if (typeof onExportMarkdown !== 'function') return;
+        const markdown = buildExecutionResultsMarkdown({ results, lastSql });
+        await onExportMarkdown(markdown);
+    };
 
     // 渲染行数据
     const renderRowData = (rowData) => {
@@ -114,7 +121,12 @@ const ResultsDisplay = ({ results }) => {
 
     return (
         <div className="panel results-display">
-            <h2>Execution Results</h2>
+            <div className="results-header">
+                <h2>Execution Results</h2>
+                <button className="export-btn" onClick={handleExport}>
+                    Export Markdown
+                </button>
+            </div>
             
             <table className="results-table">
                 <thead>

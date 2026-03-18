@@ -12,6 +12,7 @@ const App = () => {
     const [databasesByConnection, setDatabasesByConnection] = useState({}); // 每个连接的数据库列表
     const [selectedDatabases, setSelectedDatabases] = useState([]); // 选中的数据库（包含连接信息）
     const [results, setResults] = useState([]);
+    const [lastSql, setLastSql] = useState('');
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState({ text: '', type: '' });
     const [isConnectionsModalOpen, setConnectionsModalOpen] = useState(false);
@@ -182,6 +183,7 @@ const App = () => {
         
         try {
             setLoading(true);
+            setLastSql(sql);
             
             // 按连接分组数据库
             const databasesByConnectionId = {};
@@ -235,6 +237,25 @@ const App = () => {
         } catch (error) {
             setLoading(false);
             showMessage(`Execution failed: ${error.message}`, 'error');
+        }
+    };
+
+    const handleExportMarkdown = async (content) => {
+        try {
+            setLoading(true);
+            const response = await window.electron.ipcRenderer.invoke('export-markdown', { content });
+            setLoading(false);
+
+            if (response.success) {
+                showMessage(`导出成功：${response.filePath}`, 'success');
+            } else if (response.canceled) {
+                showMessage('导出已取消', 'info');
+            } else {
+                showMessage(`导出失败：${response.error}`, 'error');
+            }
+        } catch (error) {
+            setLoading(false);
+            showMessage(`导出失败：${error.message}`, 'error');
         }
     };
 
@@ -297,6 +318,8 @@ const App = () => {
                     
                     <ResultsDisplay
                         results={results}
+                        lastSql={lastSql}
+                        onExportMarkdown={handleExportMarkdown}
                     />
                 </div>
             </div>

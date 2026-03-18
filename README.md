@@ -11,6 +11,7 @@ SQL Batcher is a cross-platform desktop application built with Electron.js that 
 - **Transactional Safety**: Per-database transaction for multi-statement execution; rollback on error
 - **Connection Management**: Save and manage database connection configurations
 - **Results Display**: View execution results from all databases in a unified interface (expand to see per-statement details)
+- **Markdown Export**: Export the latest successful execution summary, SQL text, and row previews to a Markdown report
 - **Cross-Platform**: Works on Windows, macOS, and Linux
 
 ## Installation
@@ -103,6 +104,7 @@ This application follows Electron security best practices:
 - You can enter multiple SQL statements in the editor separated by ';'. Quotes and comments are handled safely; a trailing ';' is optional.
 - For each database, statements are executed inside a single transaction. If any statement fails, the transaction is rolled back and the remaining statements are skipped.
 - In the results panel, click the expand button on a database row to see a per-statement table. SELECT statements include up to 5 preview rows.
+- Use the `Export Markdown` button in the results panel to save a Markdown report of the latest successful results. Failed databases and failed statements are intentionally omitted from the export.
 
 ## Contributing
 

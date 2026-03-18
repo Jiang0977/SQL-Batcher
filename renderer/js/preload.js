@@ -15,7 +15,8 @@ contextBridge.exposeInMainWorld('electron', {
                 'save-connection',
                 'get-connections',
                 'delete-connection',
-                'update-connection'
+                'update-connection',
+                'export-markdown'
             ];
             if (validChannels.includes(channel)) {
                 return ipcRenderer.invoke(channel, data);
