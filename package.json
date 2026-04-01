@@ -24,7 +24,10 @@
     "multi-connection",
     "db-management"
   ],
-  "author": "SQL Batcher Team",
+  "author": {
+    "name": "SQL Batcher Team",
+    "email": "maintainer@sql-batcher.local"
+  },
   "license": "MIT",
   "dependencies": {
     "@octokit/rest": "^22.0.0",
@@ -47,7 +50,7 @@
   },
   "build": {
     "appId": "com.sqlbatcher.app",
-    "productName": "SQL Batcher",
+    "productName": "SQL-Batcher",
     "directories": {
       "output": "dist"
     },
@@ -55,8 +58,15 @@
       "main.js",
       "renderer/**/*",
       "src/**/*",
+      "scripts/**/*",
       "data/**/*",
       "package.json"
+    ],
+    "extraFiles": [
+      {
+        "from": "scripts/sql-batcher-launcher.sh",
+        "to": "sql-batcher-launcher.sh"
+      }
     ],
     "win": {
       "target": "nsis",
@@ -67,8 +77,17 @@
       "icon": "icons/icon.icns"
     },
     "linux": {
-      "target": "AppImage",
-      "icon": "icons/icon.png"
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "icons/linux",
+      "desktop": {
+        "Name": "SQL Batcher"
+      }
+    },
+    "deb": {
+      "afterInstall": "scripts/deb-after-install.sh"
     }
   }
 }

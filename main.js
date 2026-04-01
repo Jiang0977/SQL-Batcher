@@ -9,11 +9,25 @@ if (require('electron-squirrel-startup')) {
   app.quit();
 }
 
+// Some Linux environments crash on startup when Electron's GPU process
+// cannot be initialized. Falling back to software rendering keeps the app usable.
+if (process.platform === 'linux') {
+  app.disableHardwareAcceleration();
+}
+
+let mainWindow = null;
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+
+if (!gotSingleInstanceLock) {
+  app.quit();
+}
+
 const createWindow = () => {
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    show: false,
     webPreferences: {
       preload: path.join(__dirname, 'renderer/js/preload.js'),
       nodeIntegration: false,
@@ -24,11 +38,34 @@ const createWindow = () => {
   // and load the index.html of the app.
   mainWindow.loadFile(path.join(__dirname, 'renderer/index.html'));
 
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+    mainWindow.focus();
+  });
+
   // Only open DevTools in development mode
   if (!app.isPackaged) {
     mainWindow.webContents.openDevTools();
   }
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
 };
+
+app.on('second-instance', () => {
+  if (!mainWindow) {
+    createWindow();
+    return;
+  }
+
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore();
+  }
+
+  mainWindow.show();
+  mainWindow.focus();
+});
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
@@ -47,8 +84,11 @@ app.on('window-all-closed', () => {
 app.on('activate', () => {
   // On OS X it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
-  if (BrowserWindow.getAllWindows().length === 0) {
+  if (BrowserWindow.getAllWindows().length === 0 || mainWindow === null) {
     createWindow();
+  } else {
+    mainWindow.show();
+    mainWindow.focus();
   }
 });
 
