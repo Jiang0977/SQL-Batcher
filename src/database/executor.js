@@ -334,7 +334,7 @@ async function executeSqlOnMySqlDatabase(sql, database, connectionConfig) {
             const stmtStart = Date.now();
             const stmtType = getSqlType(stmt);
             try {
-                const [rowsOrOk] = await connection.execute(stmt);
+                const [rowsOrOk] = await connection.query(stmt);
                 const stmtTime = Date.now() - stmtStart;
 
                 let affectedRows = 0;

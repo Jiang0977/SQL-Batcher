@@ -4,7 +4,20 @@ const { testConnection, getDatabaseList, executeSqlOnDatabase, executeSqlOnDatab
 jest.mock('mysql2/promise', () => {
     const executeImpl = jest.fn(async (sql) => {
         const upper = String(sql).trim().toUpperCase();
+        if (upper.startsWith('PREPARE ') || upper.startsWith('EXECUTE ') || upper.startsWith('DEALLOCATE PREPARE')) {
+            throw new Error('This command is not supported in the prepared statement protocol yet');
+        }
         if (upper.startsWith('SELECT')) {
+            return [[{ a: 1 }]]; // rows
+        }
+        if (upper.includes('FAIL')) {
+            throw new Error('Simulated MySQL failure');
+        }
+        return [[{ affectedRows: 3 }]];
+    });
+    const queryImpl = jest.fn(async (sql) => {
+        const upper = String(sql).trim().toUpperCase();
+        if (upper.startsWith('SELECT') && !upper.includes(' INTO ')) {
             return [[{ a: 1 }]]; // rows
         }
         if (upper.includes('FAIL')) {
@@ -16,6 +29,7 @@ jest.mock('mysql2/promise', () => {
         createConnection: jest.fn().mockResolvedValue({
             ping: jest.fn().mockResolvedValue(true),
             execute: executeImpl,
+            query: queryImpl,
             beginTransaction: jest.fn().mockResolvedValue(),
             commit: jest.fn().mockResolvedValue(),
             rollback: jest.fn().mockResolvedValue(),
@@ -119,6 +133,36 @@ describe('Database Executor', () => {
             expect(result.statements.some(s => s.status === 'error')).toBe(true);
             const skippedAfterError = result.statements.find(s => s.status === 'skipped');
             expect(!!skippedAfterError).toBe(true);
+        });
+
+        it('should execute MySQL batches that use server-side prepared statements', async () => {
+            const sql = `
+                SET @schema_name = DATABASE();
+                SET @table_name = 'tbl_one_click_order_refund';
+                SELECT COUNT(*) INTO @column_exists
+                FROM information_schema.columns
+                WHERE table_schema = @schema_name AND table_name = @table_name AND column_name = 'up_status';
+                SET @sql = IF(@column_exists > 0,
+                    'UPDATE tbl_one_click_order_refund SET up_status = ''NO_REFUND'' WHERE up_status = ''NO_FEFUND''',
+                    'SELECT ''skip tbl_one_click_order_refund''');
+                PREPARE stmt FROM @sql;
+                EXECUTE stmt;
+                DEALLOCATE PREPARE stmt;
+            `;
+
+            const result = await executeSqlOnDatabase(sql, 'testdb', mysqlConnection);
+
+            expect(result.status).toBe('success');
+            expect(result.statements).toHaveLength(7);
+            expect(result.statements.map(statement => statement.status)).toEqual([
+                'success',
+                'success',
+                'success',
+                'success',
+                'success',
+                'success',
+                'success'
+            ]);
         });
 
         it('should execute multi-statements in transaction for PostgreSQL and succeed', async () => {
