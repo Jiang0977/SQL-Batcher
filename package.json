@@ -1,6 +1,6 @@
 {
   "name": "sql-batcher",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "A cross-platform desktop application for batch executing SQL statements across multiple databases and connections",
   "main": "main.js",
   "scripts": {
